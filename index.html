@@ -2,7 +2,8 @@
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Sweet Bolts</title>
-<script src="/sdk.js"></script>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
 html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui,Arial,sans-serif;color:#fff;background:#4f9d5e}
@@ -99,7 +100,7 @@ button:active{transform:scale(.96)}
 </div>
 <div class="ov" id="ov"></div>
 <script>
-const ART={}; // ART['pic0']='url' картинка животного 0, ART['baby0'], ART['mama0']
+const ART={};
 const COLORS=['#e63946','#2a7de1','#ffd60a','#2ecc71'];
 const AN=[
  {b:'🐼',it:'🎋🌿',g:['#a8e6a1','#4f9d5e']},{b:'🦊',it:'🍂🍄',g:['#ffd29a','#c0733a']},{b:'🐧',it:'🐟⛄',g:['#cfeaff','#7fb6e6']},
@@ -125,20 +126,42 @@ const shuf=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i
 const art=(k,f)=>ART[k]?'<img src="'+ART[k]+'" style="max-width:100%;max-height:100%">':f;
 try{level=+localStorage.getItem('sb_lvl')||1;coins=+localStorage.getItem('sb_coins')||0;col=JSON.parse(localStorage.getItem('sb_col')||'[]');bo=JSON.parse(localStorage.getItem('sb_bo')||'null')||bo}catch(e){}
 if(bo.i===undefined)bo.i=2;
-function saveAll(){try{localStorage.setItem('sb_lvl',level);localStorage.setItem('sb_coins',coins);localStorage.setItem('sb_col',JSON.stringify(col));localStorage.setItem('sb_bo',JSON.stringify(bo))}catch(e){}try{player&&player.setData({level,coins,col,bo},true)}catch(e){}}
+function saveAll(){try{localStorage.setItem('sb_lvl',level);localStorage.setItem('sb_coins',coins);localStorage.setItem('sb_col',JSON.stringify(col));localStorage.setItem('sb_bo',JSON.stringify(bo))}catch(e){}}
 let ctx=null,mute=false;
 function sfx(f){if(mute)return;try{ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=f;o.type='triangle';g.gain.setValueAtTime(.12,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.15);o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.16)}catch(e){}}
 document.addEventListener('visibilitychange',()=>{mute=document.hidden});
-async function initSDK(){
-  try{if(typeof YaGames==='undefined')throw 0;ysdk=await YaGames.init();
-    const l=ysdk.environment.i18n.lang;T=['ru','be','kk','uk','uz'].includes(l)?TX.ru:TX.en;
-    try{player=await ysdk.getPlayer({scopes:false});const d=await player.getData();if(d&&d.level>level){level=d.level;coins=Math.max(coins,d.coins||0);col=[...new Set([...(d.col||[]),...col])];bo=d.bo||bo}}catch(e){}
-  }catch(e){ysdk=null;T=(navigator.language||'').startsWith('ru')?TX.ru:TX.en}
-  menu();
-  try{ysdk&&ysdk.features.LoadingAPI&&ysdk.features.LoadingAPI.ready()}catch(e){}
+// --- Telegram SDK ---
+const tg = window.Telegram ? window.Telegram.WebApp : null;
+if(tg){tg.ready();tg.expand();T=(navigator.language||'').startsWith('ru')?TX.ru:TX.en;}
+else{T=(navigator.language||'').startsWith('ru')?TX.ru:TX.en;}
+// --- AdsGram ---
+const ADSGRAM_BLOCK_ID = 53672; // твой Block ID
+let adController = null;
+try {
+  if(window.Adsgram) {
+    adController = window.Adsgram.init({ blockId: String(ADSGRAM_BLOCK_ID) });
+  }
+} catch(e){ console.warn('AdsGram init failed', e); }
+
+// showReward — универсальная функция: показывает рекламу, вызывает onReward при успехе
+function showReward(onReward){
+  if(adController){
+    adController.show().then(() => {
+      onReward();
+    }).catch((err) => {
+      console.warn('AdsGram error', err);
+      // Если реклама не показалась (нет заполнения, ошибка) — награду не выдаём
+      // Можно показать пользователю сообщение
+      alert('Реклама временно недоступна, попробуйте позже');
+    });
+  } else {
+    // Fallback: если AdsGram не загрузился — выдаём награду без рекламы (для теста)
+    onReward();
+  }
 }
-const showInter=cb=>ysdk?ysdk.adv.showFullscreenAdv({callbacks:{onClose:()=>cb(),onError:()=>cb()}}):cb();
-const showReward=ok=>ysdk?ysdk.adv.showRewardedVideo({callbacks:{onRewarded:ok}}):ok();
+// showInter — межстраничная реклама (в AdsGram её нет, просто заглушка)
+function showInter(cb){ cb(); }
+
 function menu(){
   clearInterval(hopT);$('menu').style.display='flex';$('game').style.display='none';
   $('bp').textContent=level>MAXL?'🏆 '+L('Играть заново','Play again'):T.play+level;$('bsh').textContent='🛒 '+L('Магазин','Shop');$('bh').textContent=T.help;$('ba').textContent=T.about;$('br').textContent=L('Сбросить прогресс','Reset progress');
@@ -416,5 +439,5 @@ window.addEventListener('resize',()=>{
   pieces.forEach(p=>{if(p.freed||!p.el||!p.w)return;p.x=Math.max(2,Math.min(W-p.w-2,p.x));p.y=Math.max(2,Math.min(H-p.h-2,p.y));p.el.style.left=p.x+'px';p.el.style.top=p.y+'px';p.bolts.forEach(b=>{b.x=b.rx+p.x;b.y=b.ry+p.y})});
   cp=$('pz').clientWidth/N;
 });
-initSDK();
+menu();
 </script></body></html>

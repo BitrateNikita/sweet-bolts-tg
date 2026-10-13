@@ -86,11 +86,14 @@ button:active{transform:scale(.96)}
 @keyframes hnp{50%{opacity:.35}}
 .blk{filter:drop-shadow(0 0 5px #f33)!important}
 .slot.sel{outline:3px solid #ffd60a;transform:scale(1.12);background:rgba(255,214,10,.3)}
+#adTop{background:#2a9d8f;font-size:15px;width:240px}
 </style></head><body>
 <div id="bgfx"></div>
 <div id="app">
  <div id="menu"><h1>🍬 Sweet Bolts</h1><div id="mco"></div>
-  <button id="bp"></button><button id="bsh" style="background:#e9a800"></button><button id="bh" style="background:#5e60ce"></button><button id="ba" style="background:#2a9d8f"></button><button id="br" style="background:#888;font-size:13px;width:160px"></button></div>
+  <button id="bp"></button>
+  <button id="adTop">▶ +25 💰 (реклама)</button>
+  <button id="bsh" style="background:#e9a800"></button><button id="bh" style="background:#5e60ce"></button><button id="ba" style="background:#2a9d8f"></button><button id="br" style="background:#888;font-size:13px;width:160px"></button></div>
  <div id="game">
   <div id="top"><button id="bpa" style="padding:6px 12px">⏸</button><span id="lv"></span><span id="mv"></span><span id="co"></span></div>
   <div id="scene"><div id="track"><div class="bar"><i id="bari"></i></div><div id="baby"><span></span></div></div><div id="mama"></div></div>
@@ -112,14 +115,14 @@ const TX={ru:{play:'Играть · Уровень ',help:'Помощь',about:'
   aboutT:'Sweet Bolts\nРазработчик: Primat\nКонтакты: Bitrate@yandex.ru'},
  en:{play:'Play · Level ',help:'Help',about:'About',back:'Back',win:'Family reunited!',next:'Next',x2:'▶ x2 coins',lose:'No space!',retry:'Retry',cont:'▶ Continue (+2 slots)',skip:'▶ Skip level',
   h1:'Unscrew bolts: 3 of a kind vanish and feed the baby',h2:'Shape is free! Tap a glowing spot in the picture',h3:'Tap a shape in the tray',
-  helpT:'1. Tap bolts: they drop into slots.\n2. Select 3 bolts of one color in the slots: they merge into food for the baby.\n3. A shape with no bolts goes to the tray. Drag it into the picture.\n4. ❄️ Frozen shapes melt from the baby\'s food.\n5. Finish the picture and the baby finds mama!',
+  helpT:'1. Tap bolts: they drop into slots.\n2. Select 3 bolts of one color: they merge into food for the baby.\n3. A shape with no bolts goes to the tray. Drag it into the picture.\n4. ❄️ Frozen shapes melt from food.\n5. Finish the picture — baby finds mama!',
   aboutT:'Sweet Bolts\nDeveloper: Primat\nContact: Bitrate@yandex.ru'}};
 let T=TX.ru,ysdk=null,player=null,level=1,coins=0,col=[],bo={h:1,d:1,m:1,s:1,i:2};
 let P=0,N=4,pieces=[],occ=[],cvEls=[],buf=[],tray=[],bufSize=6,fed=0,maxBuf=0,over=false,ended=false,lastWon=false,gain=0,run=0,ai=0,an=AN[0],bs=28,cp=37,M=10,moves=0,paused=false,mode=null,drag=null,loseWhy='',hopT=null,hopN=0,pots=[];
 const FOOD=['🍓','🍇','🍯','🍏'];
 const LV=[[4,2,6,0,6],[4,2,6,0,6],[4,3,6,0,6],[4,3,5,0,6],[6,3,6,0,7],[6,3,6,1,7],[6,3,5,0,7],[6,3,5,1,7],[6,3,5,2,7],[6,4,6,1,7],[6,3,5,1,6],[6,4,7,2,6],[6,4,6,1,6],[6,4,7,2,6],[6,4,7,2,6],[6,4,7,3,6],[6,4,7,2,5],[6,4,7,3,5],[6,4,6,3,5],[6,4,6,3,5]],MAXL=LV.length;
 let bsel=[],hintP=null;
-const L=(a,b)=>T===TX.ru?a:b,SQ=['🟥','🟦','🟨','🟩'];
+const L=(a,b)=>T===TX.ru?a:b;
 const $=id=>document.getElementById(id);
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const shuf=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
@@ -135,7 +138,7 @@ const tg = window.Telegram ? window.Telegram.WebApp : null;
 if(tg){tg.ready();tg.expand();T=(navigator.language||'').startsWith('ru')?TX.ru:TX.en;}
 else{T=(navigator.language||'').startsWith('ru')?TX.ru:TX.en;}
 // --- AdsGram ---
-const ADSGRAM_BLOCK_ID = 53672; // твой Block ID
+const ADSGRAM_BLOCK_ID = 53672;
 let adController = null;
 try {
   if(window.Adsgram) {
@@ -143,23 +146,18 @@ try {
   }
 } catch(e){ console.warn('AdsGram init failed', e); }
 
-// showReward — универсальная функция: показывает рекламу, вызывает onReward при успехе
 function showReward(onReward){
   if(adController){
     adController.show().then(() => {
       onReward();
     }).catch((err) => {
       console.warn('AdsGram error', err);
-      // Если реклама не показалась (нет заполнения, ошибка) — награду не выдаём
-      // Можно показать пользователю сообщение
       alert('Реклама временно недоступна, попробуйте позже');
     });
   } else {
-    // Fallback: если AdsGram не загрузился — выдаём награду без рекламы (для теста)
     onReward();
   }
 }
-// showInter — межстраничная реклама (в AdsGram её нет, просто заглушка)
 function showInter(cb){ cb(); }
 
 function menu(){
@@ -173,10 +171,20 @@ const closeOv=()=>{$('ov').style.display='none';paused=false};
 function shop(back){
   paused=true;const it=[['h','🔨',L('Молот','Hammer'),50],['d','❄️',L('Разморозка','Defrost'),40],['m','👣',L('+5 ходов','+5 moves'),30],['s','➕',L('+2 ячейки','+2 slots'),30],['i','💡',L('Подсказка','Hint'),20]];
   ov('💰 '+coins,[...it.map(([k,ic,n,pr])=>[ic+' '+n+' — '+pr+'💰 ('+bo[k]+')',()=>{if(coins>=pr){coins-=pr;bo[k]++;saveAll();sfx(900)}else sfx(200);shop(back);if($('co'))$('co').textContent='💰 '+coins;drawBo()},'#e9a800']),
-    [L('▶ +25 💰 (реклама)','▶ +25 💰 (ad)'),()=>showReward(()=>{coins+=25;saveAll();shop(back)}),'#2a9d8f'],[T.back,()=>{back?pauseMenu():(closeOv(),menu())}]]);
+    [L('▶ +25 💰 (реклама)','▶ +25 💰 (ad)'),()=>showReward(()=>{coins+=25;saveAll();shop(back);$('co')&&($('co').textContent='💰 '+coins)}),'#2a9d8f'],[T.back,()=>{back?pauseMenu():(closeOv(),menu())}]]);
 }
-function pauseMenu(){paused=true;ov(L('Пауза','Pause'),[[L('Продолжить','Resume'),closeOv],[L('🔄 Перезапустить уровень','🔄 Restart level'),()=>{closeOv();start()},'#2a9d8f'],['🛒 '+L('Магазин','Shop'),()=>shop(true),'#e9a800'],[L('В меню','Menu'),()=>{run++;over=true;closeOv();menu()},'#888']])}
+function pauseMenu(){paused=true;ov(L('Пауза','Pause'),[[L('Продолжить','Resume'),closeOv],
+  [L('▶ +25 💰 (реклама)','▶ +25 💰 (ad)'),()=>showReward(()=>{coins+=25;saveAll();$('co').textContent='💰 '+coins;pauseMenu()}),'#2a9d8f'],
+  [L('🔄 Перезапустить уровень','🔄 Restart level'),()=>{closeOv();start()},'#2a9d8f'],['🛒 '+L('Магазин','Shop'),()=>shop(true),'#e9a800'],[L('В меню','Menu'),()=>{run++;over=true;closeOv();menu()},'#888']])}
 function resetAsk(){ov(L('Сбросить весь прогресс?\nМонеты, уровни и бустеры будут удалены.','Reset all progress?'),[[L('Да, сбросить','Yes, reset'),()=>{level=1;coins=0;col=[];bo={h:1,d:1,m:1,s:1,i:2};saveAll();closeOv();menu()},'#e63946'],[T.back,closeOv,'#888']])}
+// --- кнопка рекламы на главном экране ---
+$('adTop').onclick=()=>{
+  showReward(()=>{
+    coins+=25;saveAll();
+    $('mco').textContent='💰 '+coins+'   🖼 '+col.length+'/'+AN.length;
+    alert('+25 💰');
+  });
+};
 // ---- tetromino tools ----
 const BASE=[[[0,0],[0,1],[0,2],[0,3]],[[0,0],[0,1],[1,0],[1,1]],[[0,0],[0,1],[0,2],[1,1]],[[0,0],[1,0],[2,0],[2,1]],[[0,1],[1,1],[2,1],[2,0]],[[0,1],[0,2],[1,0],[1,1]],[[0,0],[0,1],[1,1],[1,2]]];
 const norm=cs=>{const mr=Math.min(...cs.map(x=>x[0])),mc=Math.min(...cs.map(x=>x[1]));return cs.map(x=>[x[0]-mr,x[1]-mc]).sort((a,b)=>a[0]-b[0]||a[1]-b[1])};
